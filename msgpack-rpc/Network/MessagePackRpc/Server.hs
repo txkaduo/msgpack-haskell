@@ -76,10 +76,13 @@ instance (MonadThrow m, MonadBaseControl IO m, OBJECT o)
          => MethodType (MethodT m o) m where
   toMethod m ls = case ls of
     [] -> toObject <$> unMethodT m
-    _ -> throwM $ ServerError "argument error"
+    _ -> throwM $ ServerError "too many arguments"
 
-instance (OBJECT o, MethodType r m) => MethodType (o -> r) m where
-  toMethod f = \(x:xs) -> toMethod (f $! fromObject' x) xs
+instance (OBJECT o, MethodType r m, MonadThrow m) => MethodType (o -> r) m where
+  toMethod f = go
+    where
+      go (x:xs)   = toMethod (f $! fromObject' x) xs
+      go []       = throwM $ ServerError "too few arguments"
 
 fromObject' :: OBJECT o => Object -> o
 fromObject' o =
