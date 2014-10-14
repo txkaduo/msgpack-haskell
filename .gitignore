@@ -9,3 +9,4 @@ dist/
 attic/
 tmp/
 *.aes
+cabal.sandbox.config

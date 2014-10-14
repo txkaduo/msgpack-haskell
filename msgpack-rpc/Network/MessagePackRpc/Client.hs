@@ -33,6 +33,8 @@ module Network.MessagePackRpc.Client (
   ClientT, Client,
   runClient,
 
+  RpcType, rpcc,
+
   -- * Call RPC method
   call,
 
@@ -42,6 +44,7 @@ module Network.MessagePackRpc.Client (
 
 import Control.Exception
 import Control.Monad
+import Control.Monad.Catch
 import Control.Monad.Trans.Control
 import Control.Monad.State.Strict as CMS
 import qualified Data.ByteString as S
@@ -73,9 +76,10 @@ data Connection m where
 runClient :: (MonadIO m, MonadBaseControl IO m)
              => S.ByteString -> Int -> ClientT m a -> m ()
 runClient host port m = do
-  runTCPClient (clientSettings port host) $ \ad -> do
-    (rsrc, _) <- appSource ad $$+ return ()
-    void $ evalStateT (unClientT m) (Connection rsrc (appSink ad) 0)
+  liftBaseWith $ \run_in_base -> do
+    runTCPClient (clientSettings port host) $ \ad -> void $ run_in_base $ do
+      (rsrc, _) <- appSource ad $$+ return ()
+      void $ evalStateT (unClientT m) (Connection rsrc (appSink ad) 0)
 
 -- | RPC error type
 data RpcError
@@ -93,7 +97,7 @@ instance (MonadIO m, MonadThrow m, OBJECT o) => RpcType (ClientT m o) where
   rpcc m args = do
     res <- rpcCall m (reverse args)
     case tryFromObject res of
-      Left err -> monadThrow $ ResultTypeError err
+      Left err -> throwM $ ResultTypeError err
       Right r  -> return r
 
 instance (OBJECT o, RpcType r) => RpcType (o -> r) where
@@ -108,16 +112,16 @@ rpcCall methodName args = ClientT $ do
   CMS.put $ Connection rsrc' sink (msgid + 1)
 
   when (rtype /= (1 :: Int)) $
-    monadThrow $ ProtocolError $
+    throwM $ ProtocolError $
       "invalid response type (expect 1, but got " ++ show rtype ++ ")"
   when (rmsgid /= msgid) $
-    monadThrow $ ProtocolError $
+    throwM $ ProtocolError $
       "message id mismatch: expect "
       ++ show msgid ++ ", but got "
       ++ show rmsgid
   case tryFromObject rerror of
     Left _ ->
-      monadThrow $ ServerError rerror
+      throwM $ ServerError rerror
     Right () ->
       return rresult
 

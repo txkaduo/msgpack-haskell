@@ -40,6 +40,7 @@ module Network.MessagePackRpc.Server (
 import Control.Applicative
 import Control.Exception as E
 import Control.Monad
+import Control.Monad.Catch
 import Control.Monad.Trans
 import Control.Monad.Trans.Control
 import Data.Conduit
@@ -75,7 +76,7 @@ instance (MonadThrow m, MonadBaseControl IO m, OBJECT o)
          => MethodType (MethodT m o) m where
   toMethod m ls = case ls of
     [] -> toObject <$> unMethodT m
-    _ -> monadThrow $ ServerError "argument error"
+    _ -> throwM $ ServerError "argument error"
 
 instance (OBJECT o, MethodType r m) => MethodType (o -> r) m where
   toMethod f = \(x:xs) -> toMethod (f $! fromObject' x) xs
@@ -91,7 +92,7 @@ serve :: forall m . (MonadIO m, MonadThrow m, MonadBaseControl IO m)
          => Int                     -- ^ Port number
          -> [(String, RpcMethod m)] -- ^ list of (method name, RPC method)
          -> m ()
-serve port methods = runTCPServer (serverSettings port "*") $ \ad -> do
+serve port methods = liftBaseWith $ \run_in_base -> runTCPServer (serverSettings port "*") $ \ad -> void $ run_in_base $ do
   (rsrc, _) <- appSource ad $$+ return ()
   processRequests rsrc (appSink ad)
   where
@@ -105,7 +106,7 @@ serve port methods = runTCPServer (serverSettings port "*") $ \ad -> do
     getResponse :: Request -> m Response
     getResponse (rtype, msgid, methodName, args) = do
       when (rtype /= 0) $
-        monadThrow $ ServerError $ "request type is not 0, got " ++ show rtype
+        throwM $ ServerError $ "request type is not 0, got " ++ show rtype
       ret <- callMethod methodName args
       return (1, msgid, toObject (), ret)
 
@@ -113,6 +114,6 @@ serve port methods = runTCPServer (serverSettings port "*") $ \ad -> do
     callMethod methodName args =
       case lookup methodName methods of
         Nothing ->
-          monadThrow $ ServerError $ "method '" ++ methodName ++ "' not found"
+          throwM $ ServerError $ "method '" ++ methodName ++ "' not found"
         Just method ->
           method args
