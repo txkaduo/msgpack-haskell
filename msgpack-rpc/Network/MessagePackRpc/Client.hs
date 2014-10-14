@@ -55,6 +55,8 @@ import Data.Conduit.Network
 import Data.MessagePack as M
 import Data.Typeable
 
+import Network.MessagePackRpc.Error
+
 type Client = ClientT IO
 
 newtype ClientT m a
@@ -80,15 +82,6 @@ runClient host port m = do
     runTCPClient (clientSettings port host) $ \ad -> void $ run_in_base $ do
       (rsrc, _) <- appSource ad $$+ return ()
       void $ evalStateT (unClientT m) (Connection rsrc (appSink ad) 0)
-
--- | RPC error type
-data RpcError
-  = ServerError Object     -- ^ Server error
-  | ResultTypeError String -- ^ Result type mismatch
-  | ProtocolError String   -- ^ Protocol error
-  deriving (Show, Eq, Ord, Typeable)
-
-instance Exception RpcError
 
 class RpcType r where
   rpcc :: String -> [Object] -> r
@@ -121,7 +114,7 @@ rpcCall methodName args = ClientT $ do
       ++ show rmsgid
   case tryFromObject rerror of
     Left _ ->
-      throwM $ ServerError rerror
+      throwM $ RemoteError rerror
     Right () ->
       return rresult
 

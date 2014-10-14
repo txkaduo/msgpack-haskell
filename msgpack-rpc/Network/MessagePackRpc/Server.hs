@@ -49,16 +49,12 @@ import qualified Data.Conduit.Binary as CB
 import qualified Data.Conduit.Attoparsec as CA
 import Data.Data
 import Data.MessagePack
+import Network.MessagePackRpc.Error
 
 type RpcMethod m = [Object] -> m Object
 
 type Request  = (Int, Int, String, [Object])
 type Response = (Int, Int, Object, Object)
-
-data ServerError = ServerError String
-  deriving (Show, Typeable)
-
-instance Exception ServerError
 
 type Method = MethodT IO
 
@@ -76,13 +72,13 @@ instance (MonadThrow m, MonadBaseControl IO m, OBJECT o)
          => MethodType (MethodT m o) m where
   toMethod m ls = case ls of
     [] -> toObject <$> unMethodT m
-    _ -> throwM $ ServerError "too many arguments"
+    _ -> throwM $ ParamError "too many arguments"
 
 instance (OBJECT o, MethodType r m, MonadThrow m) => MethodType (o -> r) m where
   toMethod f = go
     where
       go (x:xs)   = toMethod (f $! fromObject' x) xs
-      go []       = throwM $ ServerError "too few arguments"
+      go []       = throwM $ ParamError "too few arguments"
 
 fromObject' :: OBJECT o => Object -> o
 fromObject' o =
@@ -109,7 +105,7 @@ serve port methods = liftBaseWith $ \run_in_base -> runTCPServer (serverSettings
     getResponse :: Request -> m Response
     getResponse (rtype, msgid, methodName, args) = do
       when (rtype /= 0) $
-        throwM $ ServerError $ "request type is not 0, got " ++ show rtype
+        throwM $ RequestTypeError $ "request type is not 0, got " ++ show rtype
       ret <- callMethod methodName args
       return (1, msgid, toObject (), ret)
 
@@ -117,6 +113,6 @@ serve port methods = liftBaseWith $ \run_in_base -> runTCPServer (serverSettings
     callMethod methodName args =
       case lookup methodName methods of
         Nothing ->
-          throwM $ ServerError $ "method '" ++ methodName ++ "' not found"
+          throwM $ MethodNotFound $ "method '" ++ methodName ++ "' not found"
         Just method ->
           method args
