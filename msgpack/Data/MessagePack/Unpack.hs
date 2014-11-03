@@ -121,6 +121,33 @@ instance Unpackable Int where
       _ ->
         fail $ printf "invalid integer tag: 0x%02X" c
 
+instance Unpackable Int64 where
+  get = do
+    c <- A.anyWord8
+    case c of
+      _ | c .&. 0x80 == 0x00 ->
+        return $ fromIntegral c
+      _ | c .&. 0xE0 == 0xE0 ->
+        return $ fromIntegral (fromIntegral c :: Int8)
+      0xCC ->
+        return . fromIntegral =<< A.anyWord8
+      0xCD ->
+        return . fromIntegral =<< parseUint16
+      0xCE ->
+        return . fromIntegral =<< parseUint32
+      0xCF ->
+        return . fromIntegral =<< parseUint64
+      0xD0 ->
+        return . fromIntegral =<< parseInt8
+      0xD1 ->
+        return . fromIntegral =<< parseInt16
+      0xD2 ->
+        return . fromIntegral =<< parseInt32
+      0xD3 ->
+        return . fromIntegral =<< parseInt64
+      _ ->
+        fail $ printf "invalid integer tag: 0x%02X" c
+
 instance Unpackable () where
   get = do
     c <- A.anyWord8

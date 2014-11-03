@@ -83,6 +83,38 @@ instance Packable Int where
       _ ->
         fromWord8 0xD3 <>
         fromWord64be (fromIntegral n)
+
+instance Packable Int64 where
+  from n =
+    case n of
+      _ | n >= 0 && n <= 127 ->
+        fromWord8 $ fromIntegral n
+      _ | n >= -32 && n <= -1 ->
+        fromWord8 $ fromIntegral n
+      _ | n >= 0 && n < 0x100 ->
+        fromWord8 0xCC <>
+        fromWord8 (fromIntegral n)
+      _ | n >= 0 && n < 0x10000 ->
+        fromWord8 0xCD <>
+        fromWord16be (fromIntegral n)
+      _ | n >= 0 && n < 0x100000000 ->
+        fromWord8 0xCE <>
+        fromWord32be (fromIntegral n)
+      _ | n >= 0 ->
+        fromWord8 0xCF <>
+        fromWord64be (fromIntegral n)
+      _ | n >= -0x80 ->
+        fromWord8 0xD0 <>
+        fromWord8 (fromIntegral n)
+      _ | n >= -0x8000 ->
+        fromWord8 0xD1 <>
+        fromWord16be (fromIntegral n)
+      _ | n >= -0x80000000 ->
+        fromWord8 0xD2 <>
+        fromWord32be (fromIntegral n)
+      _ ->
+        fromWord8 0xD3 <>
+        fromWord64be (fromIntegral n)
       
 instance Packable () where
   from _ = 
