@@ -116,6 +116,9 @@ instance Packable Int64 where
         fromWord8 0xD3 <>
         fromWord64be (fromIntegral n)
       
+instance Packable Integer where
+    from = from . (fromIntegral :: Integer -> Int64)
+
 instance Packable () where
   from _ = 
     fromWord8 0xC0

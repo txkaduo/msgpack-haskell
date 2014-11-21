@@ -148,6 +148,9 @@ instance Unpackable Int64 where
       _ ->
         fail $ printf "invalid integer tag: 0x%02X" c
 
+instance Unpackable Integer where
+  get = fmap (fromIntegral :: Int64 -> Integer) get
+
 instance Unpackable () where
   get = do
     c <- A.anyWord8

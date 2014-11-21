@@ -41,6 +41,7 @@ import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Encoding as TL
 import qualified Data.Vector as V
 import Data.Typeable
+import Data.Int
 
 import Data.MessagePack.Assoc
 import Data.MessagePack.Pack
@@ -51,7 +52,7 @@ import Data.MessagePack.Internal.Utf8
 data Object
   = ObjectNil
   | ObjectBool Bool
-  | ObjectInteger Int
+  | ObjectInteger Integer
   | ObjectFloat Float
   | ObjectDouble Double
   | ObjectRAW B.ByteString
@@ -136,8 +137,13 @@ instance OBJECT () where
   tryFromObject _ = tryFromObjectError
 
 instance OBJECT Int where
-  toObject = ObjectInteger
-  tryFromObject (ObjectInteger n) = Right n
+  toObject = ObjectInteger . fromIntegral
+  tryFromObject (ObjectInteger n) = Right $ fromIntegral n
+  tryFromObject _ = tryFromObjectError
+
+instance OBJECT Int64 where
+  toObject = ObjectInteger . fromIntegral
+  tryFromObject (ObjectInteger n) = Right $ fromIntegral n
   tryFromObject _ = tryFromObjectError
 
 instance OBJECT Bool where
