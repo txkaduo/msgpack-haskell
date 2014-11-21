@@ -146,6 +146,11 @@ instance OBJECT Int64 where
   tryFromObject (ObjectInteger n) = Right $ fromIntegral n
   tryFromObject _ = tryFromObjectError
 
+instance OBJECT Integer where
+  toObject = ObjectInteger
+  tryFromObject (ObjectInteger n) = Right n
+  tryFromObject _ = tryFromObjectError
+
 instance OBJECT Bool where
   toObject = ObjectBool
   tryFromObject (ObjectBool b) = Right b
