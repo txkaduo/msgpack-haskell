@@ -77,14 +77,9 @@ instance (MonadThrow m, MonadBaseControl IO m, OBJECT o)
 instance (OBJECT o, MethodType r m, MonadThrow m) => MethodType (o -> r) m where
   toMethod f = go
     where
-      go (x:xs)   = toMethod (f $! fromObject' x) xs
+      go (x:xs)   = (either (throwM . ParamError) return $ tryFromObject x)
+                        >>= flip toMethod xs . f
       go []       = throwM $ ParamError "too few arguments"
-
-fromObject' :: OBJECT o => Object -> o
-fromObject' o =
-  case tryFromObject o of
-    Left err -> error $ "argument type error: " ++ err
-    Right r -> r
 
 -- | Start RPC server with a set of RPC methods.
 serve :: forall m . (MonadIO m, MonadThrow m, MonadBaseControl IO m)
