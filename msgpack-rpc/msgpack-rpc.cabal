@@ -28,7 +28,7 @@ library
                    , conduit            >= 0.5
                    , conduit-extra
                    , attoparsec-conduit >= 0.5
-                   , msgpack            == 0.7.*
+                   , msgpack            >= 0.7
                    , exceptions
 
   exposed-modules:   Network.MessagePackRpc.Server
