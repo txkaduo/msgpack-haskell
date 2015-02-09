@@ -195,16 +195,30 @@ instance Unpackable String where
   get = parseString (\n -> return . decodeUtf8 =<< A.take n)
 
 instance Unpackable B.ByteString where
-  get = parseString A.take
+  get = A.try (parseBlob A.take) <|> (parseString A.take)
 
 instance Unpackable BL.ByteString where
-  get = parseString (\n -> return . toLBS =<< A.take n)
+  get = A.try (parseBlob (fmap toLBS . A.take))
+            <|> parseBlob (fmap toLBS . A.take)
 
 instance Unpackable T.Text where
   get = parseString (\n -> return . T.decodeUtf8With skipChar =<< A.take n)
 
 instance Unpackable TL.Text where
   get = parseString (\n -> return . TL.decodeUtf8With skipChar . toLBS =<< A.take n)
+
+parseBlob :: (Int -> A.Parser a) -> A.Parser a
+parseBlob aget = do
+  c <- A.anyWord8
+  case c of
+    0xC4 ->
+      aget . fromIntegral =<< A.anyWord8
+    0xC5 ->
+      aget . fromIntegral =<< parseUint16
+    0xC6 ->
+      aget . fromIntegral =<< parseUint32
+    _ ->
+      fail $ printf "invalid raw tag: 0x%02X" c
 
 parseString :: (Int -> A.Parser a) -> A.Parser a
 parseString aget = do

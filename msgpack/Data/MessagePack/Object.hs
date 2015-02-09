@@ -56,6 +56,7 @@ data Object
   | ObjectFloat Float
   | ObjectDouble Double
   | ObjectRAW B.ByteString
+  | ObjectText T.Text
   | ObjectArray [Object]
   | ObjectMap [(Object, Object)]
   deriving (Show, Eq, Ord, Typeable)  
@@ -69,6 +70,7 @@ instance NFData Object where
       ObjectFloat f -> rnf f
       ObjectDouble d -> rnf d
       ObjectRAW bs -> bs `seq` ()
+      ObjectText t -> rnf t
       ObjectArray a -> rnf a
       ObjectMap m -> rnf m
 
@@ -81,6 +83,7 @@ instance Unpackable Object where
     , liftM ObjectFloat get
     , liftM ObjectDouble get
     , liftM ObjectRAW get
+    , liftM ObjectText get
     , liftM ObjectArray get
     , liftM (ObjectMap . unAssoc) get
     ]
@@ -100,6 +103,8 @@ instance Packable Object where
         from d
       ObjectRAW raw ->
         from raw
+      ObjectText t ->
+        from t
       ObjectArray arr ->
         from arr
       ObjectMap m ->
@@ -167,8 +172,8 @@ instance OBJECT Float where
   tryFromObject _ = tryFromObjectError
 
 instance OBJECT String where
-  toObject = toObject . encodeUtf8
-  tryFromObject obj = liftM decodeUtf8 $ tryFromObject obj
+  toObject = toObject . T.pack
+  tryFromObject obj = liftM T.unpack $ tryFromObject obj
 
 instance OBJECT B.ByteString where
   toObject = ObjectRAW
@@ -181,13 +186,15 @@ instance OBJECT BL.ByteString where
   tryFromObject _ = tryFromObjectError
 
 instance OBJECT T.Text where
-  toObject = ObjectRAW . T.encodeUtf8
+  toObject = ObjectText
   tryFromObject (ObjectRAW bs) = Right $ T.decodeUtf8With skipChar bs
+  tryFromObject (ObjectText t) = Right t
   tryFromObject _ = tryFromObjectError
 
 instance OBJECT TL.Text where
-  toObject = ObjectRAW . fromLBS . TL.encodeUtf8
+  toObject = ObjectText . TL.toStrict
   tryFromObject (ObjectRAW bs) = Right $ TL.decodeUtf8With skipChar $ toLBS bs
+  tryFromObject (ObjectText t) = Right $ TL.fromStrict t
   tryFromObject _ = tryFromObjectError
 
 instance OBJECT a => OBJECT [a] where

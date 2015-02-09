@@ -144,16 +144,30 @@ instance Packable String where
   from = fromString encodeUtf8 B.length fromByteString
 
 instance Packable B.ByteString where
-  from = fromString id B.length fromByteString
+  from = fromBlob B.length fromByteString
 
 instance Packable BL.ByteString where
-  from = fromString id (fromIntegral . BL.length) fromLazyByteString
+  from = fromBlob (fromIntegral . BL.length) fromLazyByteString
 
 instance Packable T.Text where
   from = fromString T.encodeUtf8 B.length fromByteString
 
 instance Packable TL.Text where
   from = fromString TL.encodeUtf8 (fromIntegral . BL.length) fromLazyByteString
+
+fromBlob :: (t -> Int) -> (t -> Builder) -> t -> Builder
+fromBlob lf pf bs =
+  case lf bs of
+    len | len <= 255 ->
+      fromWord8 0xC4 <>
+      fromWord8 (fromIntegral len)
+    len | len < 0x10000 ->
+      fromWord8 0xC5 <>
+      fromWord16be (fromIntegral len)
+    len ->
+      fromWord8 0xC6 <>
+      fromWord32be (fromIntegral len)
+  <> pf bs
 
 fromString :: (s -> t) -> (t -> Int) -> (t -> Builder) -> s -> Builder
 fromString cnv lf pf str =
