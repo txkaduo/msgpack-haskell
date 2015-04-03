@@ -17,6 +17,14 @@ source-repository head
   type:              git
   location:          git://github.com/msgpack/msgpack-haskell.git
 
+Flag dev
+    Description:   Turn on development settings, like auto-reload templates.
+    Default:       False
+
+Flag prof
+    Description:   Turn on profiling settings
+    Default:       False
+
 library
   build-depends:     base               >= 4.5 && < 4.8
                    , bytestring         >= 0.9
@@ -34,6 +42,17 @@ library
   exposed-modules:   Network.MessagePackRpc.Server
                      Network.MessagePackRpc.Client
                      Network.MessagePackRpc.Error
+
+  Ghc-options:      -Wall
+
+  if flag(dev)
+      cpp-options:   -DDEVELOPMENT
+      ghc-options:   -O0
+  else
+      ghc-options:   -O
+
+  if flag(prof)
+      ghc-options:   -fprof-auto
 
 test-suite msgpack-rpc-test
   type:              exitcode-stdio-1.0

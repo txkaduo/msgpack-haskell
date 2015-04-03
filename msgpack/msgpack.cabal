@@ -17,6 +17,14 @@ Source-repository head
   Type:             git
   Location:         git://github.com/msgpack/msgpack-haskell.git
 
+Flag dev
+    Description:   Turn on development settings, like auto-reload templates.
+    Default:       False
+
+Flag prof
+    Description:   Turn on profiling settings
+    Default:       False
+
 Library
   Build-depends:    base          == 4.*
                   , ghc-prim      >= 0.2
@@ -33,6 +41,15 @@ Library
                   , template-haskell >= 2.4 && < 2.10
 
   Ghc-options:      -Wall
+
+  if flag(dev)
+      cpp-options:   -DDEVELOPMENT
+      ghc-options:   -O0
+  else
+      ghc-options:   -O
+
+  if flag(prof)
+      ghc-options:   -fprof-auto
 
   Exposed-modules:  Data.MessagePack
                     Data.MessagePack.Assoc
