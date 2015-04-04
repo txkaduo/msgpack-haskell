@@ -42,7 +42,7 @@ module Network.MessagePackRpc.Client (
   RpcError(..),
   ) where
 
-import Control.Exception
+import Control.Applicative
 import Control.Monad
 import Control.Monad.Catch
 import Control.Monad.Trans.Control
@@ -53,7 +53,7 @@ import qualified Data.Conduit.Attoparsec as CA
 import qualified Data.Conduit.Binary as CB
 import Data.Conduit.Network
 import Data.MessagePack as M
-import Data.Typeable
+-- import Data.Typeable
 
 import Network.MessagePackRpc.Error
 
@@ -61,7 +61,7 @@ type Client = ClientT IO
 
 newtype ClientT m a
   = ClientT { unClientT :: StateT (Connection m) m a }
-  deriving (Monad, MonadIO, MonadThrow)
+  deriving (Applicative, Functor, Monad, MonadIO, MonadThrow)
 
 -- It can't derive by newtype deriving...
 instance MonadTrans ClientT where
