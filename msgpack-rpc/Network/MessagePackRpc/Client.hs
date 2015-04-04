@@ -1,5 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable #-}
-{-# LANGUAGE GADTs, FlexibleContexts #-}
+{-# LANGUAGE GADTs, FlexibleContexts, RankNTypes #-}
 
 -------------------------------------------------------------------
 -- |
@@ -45,7 +45,6 @@ module Network.MessagePackRpc.Client (
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Catch
-import Control.Monad.Trans.Control
 import Control.Monad.State.Strict as CMS
 import qualified Data.ByteString as S
 import Data.Conduit
@@ -75,11 +74,12 @@ data Connection m where
     -> !Int
     -> Connection m
 
-runClient :: (MonadIO m, MonadBaseControl IO m)
-             => S.ByteString -> Int -> ClientT m a -> m ()
-runClient host port m = do
-  liftBaseWith $ \run_in_base -> do
-    runTCPClient (clientSettings port host) $ \ad -> void $ run_in_base $ do
+runClient :: (MonadIO m, Functor m) =>
+    (forall b. m b -> IO b)
+    -> S.ByteString -> Int -> ClientT m a -> m ()
+runClient run_in_io host port m = do
+  liftIO $ do
+    runTCPClient (clientSettings port host) $ \ad -> run_in_io $ do
       (rsrc, _) <- appSource ad $$+ return ()
       void $ evalStateT (unClientT m) (Connection rsrc (appSink ad) 0)
 

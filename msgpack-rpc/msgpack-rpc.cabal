@@ -1,5 +1,5 @@
 name:                msgpack-rpc
-version:             0.9.3
+version:             0.10
 synopsis:            A MessagePack-RPC Implementation
 description:         A MessagePack-RPC Implementation <http://msgpack.org/>
 homepage:            http://msgpack.org/
@@ -32,7 +32,6 @@ library
                    , network            >= 2.2 && < 2.7
                    , random             == 1.*
                    , mtl                >= 2.1
-                   , monad-control      >= 0.3
                    , conduit            >= 0.5
                    , conduit-extra
                    , attoparsec-conduit >= 0.5

@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 
 -------------------------------------------------------------------
 -- |
@@ -38,16 +39,13 @@ module Network.MessagePackRpc.Server (
   ) where
 
 import Control.Applicative
-import Control.Exception as E
 import Control.Monad
 import Control.Monad.Catch
 import Control.Monad.Trans
-import Control.Monad.Trans.Control
 import Data.Conduit
 import Data.Conduit.Network
 import qualified Data.Conduit.Binary as CB
 import qualified Data.Conduit.Attoparsec as CA
-import Data.Data
 import Data.MessagePack
 import Network.MessagePackRpc.Error
 
@@ -68,7 +66,7 @@ class MethodType f m | f -> m where
   -- | Create a RPC method from a Hakell function
   toMethod :: f -> RpcMethod m
 
-instance (MonadThrow m, MonadBaseControl IO m, OBJECT o)
+instance (Functor m, MonadThrow m, OBJECT o)
          => MethodType (MethodT m o) m where
   toMethod m ls = case ls of
     [] -> toObject <$> unMethodT m
@@ -82,11 +80,13 @@ instance (OBJECT o, MethodType r m, MonadThrow m) => MethodType (o -> r) m where
       go []       = throwM $ ParamError "too few arguments"
 
 -- | Start RPC server with a set of RPC methods.
-serve :: forall m . (MonadIO m, MonadThrow m, MonadBaseControl IO m)
-         => Int                     -- ^ Port number
+serve :: forall m . (MonadIO m, MonadThrow m)
+         =>
+         (forall b. m b -> IO b)
+         -> Int                     -- ^ Port number
          -> [(String, RpcMethod m)] -- ^ list of (method name, RPC method)
          -> m ()
-serve port methods = liftBaseWith $ \run_in_base -> runTCPServer (serverSettings port "*") $ \ad -> void $ run_in_base $ do
+serve run_in_io port methods = liftIO $ runTCPServer (serverSettings port "*") $ \ad -> void $ run_in_io $ do
   (rsrc, _) <- appSource ad $$+ return ()
   processRequests rsrc (appSink ad)
   where
