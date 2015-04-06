@@ -199,7 +199,7 @@ instance Unpackable B.ByteString where
 
 instance Unpackable BL.ByteString where
   get = A.try (parseBlob (fmap toLBS . A.take))
-            <|> parseBlob (fmap toLBS . A.take)
+            <|> parseString (fmap toLBS . A.take)
 
 instance Unpackable T.Text where
   get = parseString (\n -> return . T.decodeUtf8With skipChar =<< A.take n)
