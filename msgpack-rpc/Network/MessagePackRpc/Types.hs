@@ -42,7 +42,9 @@ instance Unpackable RpcInPacket where
                 if rtype .&. 1 == 0
                     then do
                         name <- either fail return $ tryFromObject obj3
-                        args <- either fail return $ tryFromObject obj4
+                        args <- if obj4 == ObjectNil
+                                    then return []
+                                    else either fail return $ tryFromObject obj4
                         return $ RpcInRequest (rtype, msgid, name, args)
                     else
                         return $ RpcInResponse (rtype, msgid, obj3, obj4)
