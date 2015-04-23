@@ -1,5 +1,5 @@
 name:                msgpack-rpc
-version:             0.10
+version:             0.11
 synopsis:            A MessagePack-RPC Implementation
 description:         A MessagePack-RPC Implementation <http://msgpack.org/>
 homepage:            http://msgpack.org/
@@ -41,6 +41,7 @@ library
   exposed-modules:   Network.MessagePackRpc.Server
                      Network.MessagePackRpc.Client
                      Network.MessagePackRpc.Error
+                     Network.MessagePackRpc.Types
 
   Ghc-options:      -Wall
 

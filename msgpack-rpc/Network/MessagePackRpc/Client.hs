@@ -1,5 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable #-}
-{-# LANGUAGE GADTs, FlexibleContexts, RankNTypes #-}
+{-# LANGUAGE GADTs, FlexibleContexts, RankNTypes, FlexibleInstances #-}
 
 -------------------------------------------------------------------
 -- |
@@ -34,9 +34,11 @@ module Network.MessagePackRpc.Client (
   runClient,
 
   RpcType, rpcc,
+  RpcNotify, rpcn,
 
   -- * Call RPC method
   call,
+  notify,
 
   -- * RPC error
   RpcError(..),
@@ -83,6 +85,17 @@ runClient run_in_io host port m = do
       (rsrc, _) <- appSource ad $$+ return ()
       void $ evalStateT (unClientT m) (Connection rsrc (appSink ad) 0)
 
+
+class RpcNotify r where
+  rpcn :: String -> [Object] -> r
+
+instance (MonadIO m, MonadThrow m) => RpcNotify (ClientT m ()) where
+  rpcn m args = do
+    rpcNotify m (reverse args)
+
+instance (OBJECT o, RpcNotify r) => RpcNotify (o -> r) where
+  rpcn m args arg = rpcn m (toObject arg:args)
+
 class RpcType r where
   rpcc :: String -> [Object] -> r
 
@@ -118,8 +131,20 @@ rpcCall methodName args = ClientT $ do
     Right () ->
       return rresult
 
+rpcNotify :: (MonadIO m, MonadThrow m) => String -> [Object] -> ClientT m ()
+rpcNotify methodName args = ClientT $ do
+  Connection _rsrc sink _msgid <- CMS.get
+  lift $ do
+    CB.sourceLbs (pack (2 :: Int, methodName, args)) $$ sink
+
 -- | Call an RPC Method
 call :: RpcType a
         => String -- ^ Method name
         -> a
 call m = rpcc m []
+
+-- | Send notification
+notify :: RpcNotify a
+        => String -- ^ Method name
+        -> a
+notify m = rpcn m []

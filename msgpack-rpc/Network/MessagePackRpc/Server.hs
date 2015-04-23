@@ -32,7 +32,7 @@
 
 module Network.MessagePackRpc.Server (
   -- * RPC method types
-  RpcMethod, MethodType(..),
+  RpcMethod, RpcSink, RpcMethodG, MethodType(..),
   MethodT(..), Method,
   -- * Start RPC server
   serve,
@@ -47,12 +47,16 @@ import Data.Conduit.Network
 import qualified Data.Conduit.Binary as CB
 import qualified Data.Conduit.Attoparsec as CA
 import Data.MessagePack
+import Network.MessagePackRpc.Types
 import Network.MessagePackRpc.Error
 
-type RpcMethod m = [Object] -> m Object
+-- | Create response to peer request
+type RpcMethod m = RpcMethodG Object m
 
-type Request  = (Int, Int, String, [Object])
-type Response = (Int, Int, Object, Object)
+-- | Handler notification from peer, no response will be made.
+type RpcSink m = RpcMethodG () m
+
+type RpcMethodG mr m = [Object] -> m mr
 
 type Method = MethodT IO
 
@@ -62,17 +66,23 @@ newtype MethodT m a = MethodT { unMethodT :: m a }
 instance MonadTrans MethodT where
   lift = MethodT
 
-class MethodType f m | f -> m where
+class MethodType f mr m | f -> m where
   -- | Create a RPC method from a Hakell function
-  toMethod :: f -> RpcMethod m
+  toMethod :: f -> RpcMethodG mr m
 
 instance (Functor m, MonadThrow m, OBJECT o)
-         => MethodType (MethodT m o) m where
+         => MethodType (MethodT m o) Object m where
   toMethod m ls = case ls of
     [] -> toObject <$> unMethodT m
     _ -> throwM $ ParamError "too many arguments"
 
-instance (OBJECT o, MethodType r m, MonadThrow m) => MethodType (o -> r) m where
+instance (Functor m, MonadThrow m)
+         => MethodType (MethodT m ()) () m where
+  toMethod m ls = case ls of
+    [] -> unMethodT m
+    _ -> throwM $ ParamError "too many arguments"
+
+instance (OBJECT o, MethodType r mr m, MonadThrow m) => MethodType (o -> r) mr m where
   toMethod f = go
     where
       go (x:xs)   = (either (throwM . ParamError) return $ tryFromObject x)
@@ -80,6 +90,7 @@ instance (OBJECT o, MethodType r m, MonadThrow m) => MethodType (o -> r) m where
       go []       = throwM $ ParamError "too few arguments"
 
 -- | Start RPC server with a set of RPC methods.
+-- Caution: Does not support 'notification'.
 serve :: forall m . (MonadIO m, MonadThrow m)
          =>
          (forall b. m b -> IO b)
