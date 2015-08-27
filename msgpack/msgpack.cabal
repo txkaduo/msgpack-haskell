@@ -32,13 +32,13 @@ Library
                   , bytestring    == 0.10.*
                   , text          >= 0.11
                   , containers    >= 0.4
-                  , unordered-containers >= 0.1 && < 0.3
+                  , unordered-containers >= 0.1
                   , hashable
-                  , vector        >= 0.7 && < 0.11
-                  , attoparsec    >= 0.8 && < 0.13
-                  , blaze-builder >= 0.3 && < 0.4
-                  , deepseq       >= 1.1 && < 1.4
-                  , template-haskell >= 2.4 && < 2.10
+                  , vector        >= 0.7
+                  , attoparsec    >= 0.8
+                  , blaze-builder >= 0.3
+                  , deepseq       >= 1.1
+                  , template-haskell >= 2.4
 
   Ghc-options:      -Wall
 
