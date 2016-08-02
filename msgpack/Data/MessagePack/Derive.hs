@@ -19,11 +19,17 @@ import Data.MessagePack.Pack
 import Data.MessagePack.Unpack
 import Data.MessagePack.Object
 
+#if MIN_VERSION_template_haskell(2, 11, 0)
+#define NO_KIND Nothing
+#else
+#define NO_KIND
+#endif
+
 derivePack :: Bool -> Name -> Q [Dec]
 derivePack asObject tyName = do
   info <- reify tyName
   d <- case info of
-    TyConI (DataD _ {- cxt -} name tyVars cons _ {- derivings -}) ->
+     TyConI (DataD _ {- cxt -} name tyVars NO_KIND cons _ {- derivings -}) ->
       instanceD (cx tyVars) (ct ''Packable name tyVars) $
         [ funD 'from [ clause [] (normalB [e| \v -> $(caseE [| v |] (map alt cons)) |]) []]
         ]
@@ -61,7 +67,7 @@ deriveUnpack :: Bool -> Name -> Q [Dec]
 deriveUnpack asObject tyName = do
   info <- reify tyName
   d <- case info of
-    TyConI (DataD _ {- cxt -} name tyVars cons _ {- derivings -}) ->
+     TyConI (DataD _ {- cxt -} name tyVars NO_KIND cons _ {- derivings -}) ->
       instanceD (cx tyVars) (ct ''Unpackable name tyVars) $
         [ funD 'get [ clause [] (normalB (foldl1 (\x y -> [| $x `mplus` $y |]) $ map alt cons)) []]
         ]
@@ -102,7 +108,7 @@ deriveObject asObject tyName = do
   p <- deriveUnpack asObject tyName
   info <- reify tyName
   o <- case info of
-    TyConI (DataD _ {- cxt -} name tyVars _ _ {- derivings -}) ->
+     TyConI (DataD _ {- cxt -} name tyVars NO_KIND _ _ {- derivings -}) ->
       -- use default implement
       instanceD (cx tyVars) (ct ''OBJECT name tyVars) []
     _ -> error $ "cant derive Object: " ++ show tyName
