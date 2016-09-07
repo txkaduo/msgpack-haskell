@@ -34,7 +34,6 @@ library
                    , mtl                >= 2.1
                    , conduit            >= 0.5
                    , conduit-extra
-                   , attoparsec-conduit >= 0.5
                    , msgpack            >= 0.7
                    , exceptions
 
