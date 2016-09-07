@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, FlexibleInstances #-}
+{-# LANGUAGE TemplateHaskell, FlexibleInstances, CPP #-}
 
 module Data.MessagePack.Derive (
   -- | deriving OBJECT
@@ -34,7 +34,7 @@ derivePack asObject tyName = do
         [ funD 'from [ clause [] (normalB [e| \v -> $(caseE [| v |] (map alt cons)) |]) []]
         ]
 
-    _ -> error $ "cant derive Packable: " ++ show tyName
+     _ -> error $ "cant derive Packable: " ++ show tyName
   return [d]
 
   where
@@ -72,7 +72,7 @@ deriveUnpack asObject tyName = do
         [ funD 'get [ clause [] (normalB (foldl1 (\x y -> [| $x `mplus` $y |]) $ map alt cons)) []]
         ]
 
-    _ -> error $ "cant derive Unpackable: " ++ show tyName
+     _ -> error $ "cant derive Unpackable: " ++ show tyName
   return [d]
 
   where
@@ -111,7 +111,7 @@ deriveObject asObject tyName = do
      TyConI (DataD _ {- cxt -} name tyVars NO_KIND _ _ {- derivings -}) ->
       -- use default implement
       instanceD (cx tyVars) (ct ''OBJECT name tyVars) []
-    _ -> error $ "cant derive Object: " ++ show tyName
+     _ -> error $ "cant derive Object: " ++ show tyName
   return $ g ++ p ++ [o]
 
 failN :: (MonadPlus m, OBJECT a) => Maybe Object -> m a
